@@ -9,25 +9,18 @@ import java.awt.*;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.*;
 
 public class Main {
     public static final String STRING_WINNER_ROW = "winner_row";
     public static final String STRING_ARNOLD = "Arnold";
-    public static final String STRING_KOVACS = "Kovács";
+    public static final String STRING_KOVACS_HUN = "Kovács";
+    public static final String STRING_KOVACS_ENG = "Kovacs";
     public static final int INT_NUMBER_OF_NOTIFICATIONS = 10;
     public static final long MILLIS_BETWEEN_NOTIFICATIONS = 1000L;
-
-    static Handler fileHandler = null;
-    private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
+    public static final long MILLIS_BEFORE_CONSOLE_CLOSE = 5000L;
 
     public static void main(String[] args) {
-        setup();
-        ScheduledExecutorService ses = Executors.newSingleThreadScheduledExecutor();
-        ses.scheduleAtFixedRate(Main::checkPizza, 0, 1, TimeUnit.HOURS);
+        checkPizza();
     }
 
     private static void checkPizza() {
@@ -35,8 +28,9 @@ public class Main {
             check("https://akropolisz-gyros.hu/nyertesek/");
             check("https://donpedropizza.hu/nyertesek/");
             check("https://corleoneristorante.hu/nyertesek/");
+            Thread.sleep(MILLIS_BEFORE_CONSOLE_CLOSE);
         } catch (InterruptedException | IOException e) {
-            LOGGER.info(e.getMessage());
+            e.printStackTrace();
             Thread.currentThread().interrupt();
         }
 
@@ -51,9 +45,11 @@ public class Main {
         Document doc = getSite(url);   // pretty print HTML
         for (Element element : doc.getElementsByClass(STRING_WINNER_ROW)) {
             if (element.text().contains(dateString) || element.text().contains(yesterDateString)) {
-                LOGGER.log(Level.INFO, "{0}", url + ": " + element.text());
-                if (element.text().contains(STRING_ARNOLD) && element.text().contains(STRING_KOVACS)) {
-                    createNotification("Claim Free " + url);
+                System.out.println(url + ": " + element.text());
+                if (element.text().contains(STRING_ARNOLD)) {
+                    if (element.text().contains(STRING_KOVACS_ENG) || element.text().contains(STRING_KOVACS_HUN)) {
+                        createNotification("Claim Free " + url);
+                    }
                 }
             }
         }
@@ -69,7 +65,7 @@ public class Main {
             try {
                 tray.add(trayIcon);
             } catch (AWTException e) {
-                LOGGER.info(e.getMessage());
+                e.printStackTrace();
             }
             trayIcon.displayMessage("Free Pizza", message, TrayIcon.MessageType.INFO);
             Thread.sleep(MILLIS_BETWEEN_NOTIFICATIONS);
@@ -81,18 +77,6 @@ public class Main {
     private static Document getSite(String urlString) throws IOException {
         Connection conn = Jsoup.connect(urlString);
         return conn.get();
-    }
-
-    public static void setup() {
-        try {
-            fileHandler = new FileHandler("./pizza_checker.log");//file
-            SimpleFormatter simple = new SimpleFormatter();
-            fileHandler.setFormatter(simple);
-
-            LOGGER.addHandler(fileHandler);//adding Handler for file
-        } catch (IOException e) {
-            LOGGER.info(e.getMessage());
-        }
     }
 }
 
